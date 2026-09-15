@@ -1,5 +1,7 @@
 # Enterprise Excel Export Lab
 
+[![CI](https://github.com/BaeKyle/enterprise-excel-export-lab/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/BaeKyle/enterprise-excel-export-lab/actions/workflows/ci.yml)
+
 Production-oriented Spring Boot sample for exporting large enterprise datasets
 to Excel without freezing the browser, blocking a request thread, or loading all
 rows into memory.
