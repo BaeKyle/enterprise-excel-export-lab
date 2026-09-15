@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enterprise Excel Export Lab</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #fff8f2;
+      --panel: #ffffff;
+      --line: #f0e4d8;
+      --text: #1f2933;
+      --muted: #6b7280;
+      --primary: #ff6f0f;
+      --primary-dark: #e85d00;
+      --soft-primary: #fff1e7;
+      --danger: #e03131;
+      --ok: #16834a;
+      --warn: #d97706;
+      --error: #c92a2a;
+      --ink: #111827;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    main {
+      width: min(1080px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 28px 0 44px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--ink);
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border-radius: 10px;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 900;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 0 14px;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.6fr);
+      gap: 20px;
+      align-items: stretch;
+      margin-bottom: 22px;
+    }
+
+    .hero-copy {
+      padding: 30px;
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 16px 40px rgba(255, 111, 15, 0.12);
+    }
+
+    .hero-side {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 12px;
+      padding: 24px;
+      border-radius: 24px;
+      background: var(--soft-primary);
+      border: 1px solid #ffd9bf;
+    }
+
+    h1 {
+      max-width: 720px;
+      margin: 0 0 12px;
+      font-size: 38px;
+      line-height: 1.15;
+      color: var(--ink);
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 760px;
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 16px;
+    }
+
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 14px 0;
+      border-bottom: 1px solid #ffd9bf;
+    }
+
+    .metric:last-child {
+      border-bottom: 0;
+    }
+
+    .metric strong {
+      color: var(--ink);
+      font-size: 22px;
+    }
+
+    .metric span {
+      color: #8a4b20;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 22px;
+      box-shadow: 0 12px 30px rgba(31, 41, 51, 0.08);
+    }
+
+    h2 {
+      margin: 0 0 8px;
+      font-size: 21px;
+      color: var(--ink);
+    }
+
+    .desc {
+      min-height: 76px;
+      margin: 0 0 18px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    button {
+      min-height: 42px;
+      border: 0;
+      border-radius: 12px;
+      padding: 0 18px;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 16px rgba(255, 111, 15, 0.22);
+    }
+
+    button:hover {
+      background: var(--primary-dark);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .secondary {
+      background: #2f3a4a;
+      box-shadow: 0 8px 16px rgba(47, 58, 74, 0.18);
+    }
+
+    .secondary:hover {
+      background: #1f2937;
+    }
+
+    .danger {
+      background: var(--danger);
+      box-shadow: 0 8px 16px rgba(224, 49, 49, 0.16);
+    }
+
+    .danger:hover {
+      background: #8a1f16;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+
+    .field label {
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .field input {
+      width: 180px;
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0 12px;
+      color: var(--ink);
+      font-size: 15px;
+      font-weight: 700;
+      outline: none;
+    }
+
+    .field input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(255, 111, 15, 0.12);
+    }
+
+    .status-box {
+      margin-top: 18px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      background: #fffdfb;
+    }
+
+    .message {
+      margin-top: 16px;
+      border-radius: 14px;
+      padding: 14px;
+      background: #fff1e7;
+      color: #8a4b20;
+      line-height: 1.5;
+      font-size: 14px;
+      font-weight: 700;
+      white-space: pre-line;
+    }
+
+    .message.error {
+      background: #fff5f5;
+      color: var(--error);
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      border-top: 1px solid var(--line);
+    }
+
+    .row:first-child {
+      border-top: 0;
+    }
+
+    .label,
+    .value {
+      padding: 10px 12px;
+      line-height: 1.4;
+    }
+
+    .label {
+      background: #fff7ed;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .value {
+      word-break: break-all;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      border-radius: 999px;
+      padding: 0 10px;
+      background: var(--soft-primary);
+      color: var(--primary-dark);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .badge.completed {
+      background: #ecfdf3;
+      color: var(--ok);
+    }
+
+    .badge.running,
+    .badge.pending {
+      background: #fffaeb;
+      color: var(--warn);
+    }
+
+    .badge.failed {
+      background: #fef3f2;
+      color: var(--error);
+    }
+
+    progress {
+      width: 100%;
+      height: 16px;
+      accent-color: var(--primary);
+    }
+
+    .note {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      padding: 18px;
+      background: rgba(17, 24, 39, 0.42);
+      z-index: 20;
+    }
+
+    .modal-backdrop.open {
+      display: grid;
+    }
+
+    .modal {
+      width: min(560px, 100%);
+      border-radius: 24px;
+      background: #fff;
+      border: 1px solid var(--line);
+      box-shadow: 0 24px 80px rgba(17, 24, 39, 0.32);
+      overflow: hidden;
+    }
+
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 22px;
+      background: var(--soft-primary);
+      border-bottom: 1px solid #ffd9bf;
+    }
+
+    .modal-head h2 {
+      margin-bottom: 6px;
+    }
+
+    .modal-head p {
+      margin: 0;
+      color: #8a4b20;
+      line-height: 1.45;
+      font-size: 14px;
+    }
+
+    .modal-body {
+      padding: 20px 22px 22px;
+    }
+
+    .close-icon {
+      display: grid;
+      width: 34px;
+      min-height: 34px;
+      place-items: center;
+      border-radius: 50%;
+      background: #fff;
+      color: var(--muted);
+      box-shadow: none;
+      padding: 0;
+      flex: 0 0 auto;
+    }
+
+    @media (max-width: 760px) {
+      main {
+        width: min(100vw - 20px, 1080px);
+        padding: 24px 0;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar,
+      .hero {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      h1 {
+        font-size: 30px;
+      }
+
+      .row {
+        grid-template-columns: 112px 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">X</span>
+        Excel Export Lab
+      </div>
+      <span class="pill">Spring Boot · SXSSF · Async Job</span>
+    </header>
+
+    <section class="hero" aria-label="Overview">
+      <div class="hero-copy">
+        <h1>Large Excel exports without freezing the browser.</h1>
+        <p class="lead">
+          A production-style export screen for reports that can grow beyond
+          normal browser memory limits. Large result sets are read with
+          chunked queries, generated in the background, and downloaded after completion.
+        </p>
+      </div>
+      <aside class="hero-side">
+        <div class="metric">
+          <span>Bulk Rows</span>
+          <strong>600K</strong>
+        </div>
+        <div class="metric">
+          <span>Read Mode</span>
+          <strong>Chunk</strong>
+        </div>
+        <div class="metric">
+          <span>Large File</span>
+          <strong>20MB+</strong>
+        </div>
+      </aside>
+    </section>
+
+    <section class="grid" aria-label="Excel export demo">
+      <article class="panel">
+        <h2>Normal Download</h2>
+        <p class="desc">
+          Simulates the legacy one-shot download path. A 600K-row unpaged query
+          must stay in memory with the workbook buffer, so the request fails
+          before a stable browser download can begin.
+        </p>
+        <div class="actions">
+          <button id="normalDownloadBtn" type="button">Try normal 20MB+ download</button>
+        </div>
+        <div class="message" id="normalMessage">Risk path: unpaged query + workbook buffer + response buffer in one request.</div>
+      </article>
+
+      <article class="panel">
+        <h2>Bulk Download</h2>
+        <p class="desc">
+          Generate the Excel file on the server in chunks, keep the browser free,
+          and download only the completed file.
+        </p>
+        <div class="field">
+          <label for="chunkSize">Rows per chunk</label>
+          <input id="chunkSize" type="number" min="100" max="10000" step="100" value="1000">
+        </div>
+        <div class="actions">
+          <button id="bulkStartBtn" type="button">Start bulk export</button>
+          <button id="bulkPopupBtn" type="button">Popup mode export</button>
+          <button id="bulkStopBtn" class="secondary" type="button" disabled>Stop bulk export</button>
+          <button id="bulkDownloadBtn" class="secondary" type="button" disabled>Download Result</button>
+          <button id="cleanupBtn" class="danger" type="button">Cleanup Files</button>
+        </div>
+
+        <div class="status-box">
+          <div class="row">
+            <div class="label">Status</div>
+            <div class="value"><span id="bulkStatus" class="badge">READY</span></div>
+          </div>
+          <div class="row">
+            <div class="label">Rows</div>
+            <div class="value"><span id="bulkRows">0 / 600,000</span></div>
+          </div>
+          <div class="row">
+            <div class="label">Chunk</div>
+            <div class="value" id="bulkChunk">1,000 rows</div>
+          </div>
+          <div class="row">
+            <div class="label">Progress</div>
+            <div class="value"><progress id="bulkProgress" value="0" max="600000"></progress></div>
+          </div>
+          <div class="row">
+            <div class="label">Elapsed</div>
+            <div class="value" id="bulkElapsed">-</div>
+          </div>
+          <div class="row">
+            <div class="label">Expires</div>
+            <div class="value" id="bulkExpires">-</div>
+          </div>
+          <div class="row">
+            <div class="label">Job ID</div>
+            <div class="value" id="bulkJobId">-</div>
+          </div>
+          <div class="row">
+            <div class="label">File</div>
+            <div class="value" id="bulkFileName">-</div>
+          </div>
+          <div class="row">
+            <div class="label">Size</div>
+            <div class="value" id="bulkFileSize">-</div>
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <div id="bulkModalBackdrop" class="modal-backdrop" aria-hidden="true">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-head">
+        <div>
+          <h2 id="modalTitle">Bulk export popup</h2>
+          <p>
+            Accounting-system style popup: starts automatically, shows progress,
+            downloads automatically on completion, and cancels when stopped.
+          </p>
+        </div>
+        <button id="modalCloseBtn" class="close-icon" type="button" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="status-box">
+          <div class="row">
+            <div class="label">Status</div>
+            <div class="value"><span id="modalStatus" class="badge">READY</span></div>
+          </div>
+          <div class="row">
+            <div class="label">Rows</div>
+            <div class="value" id="modalRows">0 / 600,000</div>
+          </div>
+          <div class="row">
+            <div class="label">Chunk</div>
+            <div class="value" id="modalChunk">1,000 rows</div>
+          </div>
+          <div class="row">
+            <div class="label">Progress</div>
+            <div class="value"><progress id="modalProgress" value="0" max="600000"></progress></div>
+          </div>
+          <div class="row">
+            <div class="label">Elapsed</div>
+            <div class="value" id="modalElapsed">-</div>
+          </div>
+          <div class="row">
+            <div class="label">File Size</div>
+            <div class="value" id="modalFileSize">-</div>
+          </div>
+          <div class="row">
+            <div class="label">Job ID</div>
+            <div class="value" id="modalJobId">-</div>
+          </div>
+        </div>
+        <div class="actions" style="margin-top:16px">
+          <button id="modalStopBtn" class="secondary" type="button">Stop and close</button>
+          <button id="modalDownloadBtn" type="button" disabled>Download now</button>
+        </div>
+        <div id="modalMessage" class="message">Waiting for export job...</div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const TOTAL_ROWS = 600000;
+    let currentJobId = null;
+    let pollTimer = null;
+
+    const normalDownloadBtn = document.getElementById("normalDownloadBtn");
+    const normalMessage = document.getElementById("normalMessage");
+    const bulkStartBtn = document.getElementById("bulkStartBtn");
+    const bulkPopupBtn = document.getElementById("bulkPopupBtn");
+    const bulkStopBtn = document.getElementById("bulkStopBtn");
+    const bulkDownloadBtn = document.getElementById("bulkDownloadBtn");
+    const cleanupBtn = document.getElementById("cleanupBtn");
+    const bulkStatus = document.getElementById("bulkStatus");
+    const bulkRows = document.getElementById("bulkRows");
+    const bulkChunk = document.getElementById("bulkChunk");
+    const bulkProgress = document.getElementById("bulkProgress");
+    const chunkSizeInput = document.getElementById("chunkSize");
+    const bulkElapsed = document.getElementById("bulkElapsed");
+    const bulkExpires = document.getElementById("bulkExpires");
+    const bulkJobId = document.getElementById("bulkJobId");
+    const bulkFileName = document.getElementById("bulkFileName");
+    const bulkFileSize = document.getElementById("bulkFileSize");
+    const bulkModalBackdrop = document.getElementById("bulkModalBackdrop");
+    const modalCloseBtn = document.getElementById("modalCloseBtn");
+    const modalStopBtn = document.getElementById("modalStopBtn");
+    const modalDownloadBtn = document.getElementById("modalDownloadBtn");
+    const modalStatus = document.getElementById("modalStatus");
+    const modalRows = document.getElementById("modalRows");
+    const modalChunk = document.getElementById("modalChunk");
+    const modalProgress = document.getElementById("modalProgress");
+    const modalElapsed = document.getElementById("modalElapsed");
+    const modalFileSize = document.getElementById("modalFileSize");
+    const modalJobId = document.getElementById("modalJobId");
+    const modalMessage = document.getElementById("modalMessage");
+    let modalJobIdValue = null;
+    let modalPollTimer = null;
+    let modalDownloadTriggered = false;
+
+    normalDownloadBtn.addEventListener("click", async () => {
+      normalMessage.className = "message";
+      normalMessage.textContent = "Checking normal download policy for a 20MB+ Excel file...";
+
+      const response = await fetch("/api/exports/orders/normal/check");
+      const result = await response.json();
+      normalMessage.className = "message error";
+      normalMessage.textContent = `${response.status} ${result.reason}
+${result.message}
+Rows: ${Number(result.rows || TOTAL_ROWS).toLocaleString()}
+Risk: ${result.memoryRisk}
+Bulk fix: ${result.bulkQueryMode}, ${Number(result.chunkSize || 1000).toLocaleString()} rows per chunk`;
+    });
+
+    bulkStartBtn.addEventListener("click", async () => {
+      resetBulkStatus();
+      bulkStartBtn.disabled = true;
+      setStatus("PENDING");
+
+      try {
+        const chunkSize = normalizeChunkSize(chunkSizeInput.value);
+        const response = await fetch(`/api/exports/orders?chunkSize=${chunkSize}`, { method: "POST" });
+        if (!response.ok) {
+          throw new Error("Failed to start export job");
+        }
+
+        const job = await response.json();
+        currentJobId = job.id;
+        renderJob(job);
+        startPolling();
+      } catch (error) {
+        setStatus("FAILED");
+        bulkFileName.textContent = error.message;
+        bulkStartBtn.disabled = false;
+      }
+    });
+
+    bulkStopBtn.addEventListener("click", async () => {
+      await cancelCurrentJob();
+    });
+
+    bulkPopupBtn.addEventListener("click", async () => {
+      const chunkSize = normalizeChunkSize(chunkSizeInput.value);
+      await startModalExport(chunkSize);
+    });
+
+    modalCloseBtn.addEventListener("click", async () => {
+      await closeModalExport();
+    });
+
+    modalStopBtn.addEventListener("click", async () => {
+      await closeModalExport();
+    });
+
+    modalDownloadBtn.addEventListener("click", () => {
+      if (modalJobIdValue) {
+        window.location.href = `/api/exports/${modalJobIdValue}/download`;
+      }
+    });
+
+    bulkDownloadBtn.addEventListener("click", () => {
+      if (!currentJobId) {
+        return;
+      }
+      window.location.href = `/api/exports/${currentJobId}/download`;
+    });
+
+    cleanupBtn.addEventListener("click", async () => {
+      cleanupBtn.disabled = true;
+      try {
+        const response = await fetch("/api/exports/cleanup", { method: "POST" });
+        const result = await response.json();
+        bulkFileName.textContent = `Cleanup removed ${result.removedFiles || 0} file(s).`;
+      } finally {
+        cleanupBtn.disabled = false;
+      }
+    });
+
+    function startPolling() {
+      stopPolling();
+      pollTimer = setInterval(loadJobStatus, 700);
+      loadJobStatus();
+    }
+
+    function stopPolling() {
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
+    }
+
+    async function loadJobStatus() {
+      if (!currentJobId) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/exports/${currentJobId}`);
+        if (!response.ok) {
+          throw new Error("Failed to load export status");
+        }
+
+        const job = await response.json();
+        renderJob(job);
+
+        if (isFinished(job.status)) {
+          stopPolling();
+          bulkStartBtn.disabled = false;
+          bulkStopBtn.disabled = true;
+          bulkDownloadBtn.disabled = job.status !== "COMPLETED";
+        }
+      } catch (error) {
+        stopPolling();
+        setStatus("FAILED");
+        bulkFileName.textContent = error.message;
+        bulkStartBtn.disabled = false;
+      }
+    }
+
+    function renderJob(job) {
+      setStatus(job.status || "READY");
+      bulkJobId.textContent = job.id || "-";
+      bulkFileName.textContent = job.fileName || "-";
+      bulkFileSize.textContent = formatBytes(job.fileSizeBytes);
+
+      const exportedRows = Number(job.exportedRows || 0);
+      const totalRows = Number(job.totalRows || TOTAL_ROWS);
+      const percent = Number(job.progressPercent || 0);
+      bulkRows.textContent = `${exportedRows.toLocaleString()} / ${totalRows.toLocaleString()} (${percent}%)`;
+      bulkChunk.textContent = `${Number(job.chunkSize || normalizeChunkSize(chunkSizeInput.value)).toLocaleString()} rows per chunk`;
+      bulkProgress.value = exportedRows;
+      bulkProgress.max = totalRows;
+      bulkElapsed.textContent = formatMillis(job.elapsedMillis);
+      bulkExpires.textContent = job.expiresAt ? job.expiresAt.replace("T", " ") : "-";
+      bulkStopBtn.disabled = isFinished(job.status) || !job.id;
+      bulkDownloadBtn.disabled = job.status !== "COMPLETED";
+    }
+
+    function resetBulkStatus() {
+      currentJobId = null;
+      stopPolling();
+      bulkStopBtn.disabled = true;
+      bulkDownloadBtn.disabled = true;
+      bulkJobId.textContent = "-";
+      bulkFileName.textContent = "-";
+      bulkFileSize.textContent = "-";
+      bulkRows.textContent = `0 / ${TOTAL_ROWS.toLocaleString()}`;
+      bulkChunk.textContent = `${normalizeChunkSize(chunkSizeInput.value).toLocaleString()} rows per chunk`;
+      bulkProgress.value = 0;
+      bulkElapsed.textContent = "-";
+      bulkExpires.textContent = "-";
+    }
+
+    function setStatus(status) {
+      const value = status || "READY";
+      bulkStatus.textContent = value;
+      bulkStatus.className = `badge ${value.toLowerCase()}`;
+    }
+
+    function formatMillis(value) {
+      const millis = Number(value || 0);
+      if (!millis) {
+        return "-";
+      }
+      return `${(millis / 1000).toFixed(1)} sec`;
+    }
+
+    function formatBytes(value) {
+      const bytes = Number(value || 0);
+      if (!bytes) {
+        return "-";
+      }
+      const mb = bytes / 1024 / 1024;
+      return `${mb.toFixed(2)} MB`;
+    }
+
+    function normalizeChunkSize(value) {
+      const parsed = Number(value || 1000);
+      if (!Number.isFinite(parsed) || parsed < 100) {
+        return 1000;
+      }
+      return Math.min(Math.round(parsed), 10000);
+    }
+
+    function isFinished(status) {
+      return ["COMPLETED", "FAILED", "CANCELED"].includes(String(status || ""));
+    }
+
+    async function cancelCurrentJob() {
+      if (!currentJobId) {
+        return;
+      }
+      const response = await fetch(`/api/exports/${currentJobId}/cancel`, { method: "POST" });
+      if (response.ok) {
+        const job = await response.json();
+        renderJob(job);
+      }
+      stopPolling();
+      bulkStartBtn.disabled = false;
+      bulkStopBtn.disabled = true;
+    }
+
+    async function startModalExport(chunkSize) {
+      stopModalPolling();
+      modalJobIdValue = null;
+      modalDownloadTriggered = false;
+      bulkModalBackdrop.classList.add("open");
+      bulkModalBackdrop.setAttribute("aria-hidden", "false");
+      modalChunk.textContent = `${chunkSize.toLocaleString()} rows per chunk`;
+      modalMessage.className = "message";
+      modalMessage.textContent = "Submitting background export job...";
+      renderModalJob({ status: "PENDING", exportedRows: 0, totalRows: TOTAL_ROWS, chunkSize });
+
+      try {
+        const response = await fetch(`/api/exports/orders?chunkSize=${chunkSize}`, { method: "POST" });
+        if (!response.ok) {
+          throw new Error("Failed to start popup export job");
+        }
+        const job = await response.json();
+        modalJobIdValue = job.id;
+        currentJobId = job.id;
+        renderJob(job);
+        renderModalJob(job);
+        modalMessage.textContent = "Generating Excel file in the background...";
+        modalPollTimer = setInterval(loadModalJobStatus, 700);
+        loadModalJobStatus();
+      } catch (error) {
+        renderModalJob({ status: "FAILED", exportedRows: 0, totalRows: TOTAL_ROWS, chunkSize });
+        modalMessage.className = "message error";
+        modalMessage.textContent = error.message;
+      }
+    }
+
+    async function loadModalJobStatus() {
+      if (!modalJobIdValue) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/exports/${modalJobIdValue}`);
+        if (!response.ok) {
+          throw new Error("Failed to load popup export status");
+        }
+        const job = await response.json();
+        renderJob(job);
+        renderModalJob(job);
+
+        if (job.status === "COMPLETED" && !modalDownloadTriggered) {
+          modalDownloadTriggered = true;
+          modalMessage.textContent = "Completed. Download starts automatically.";
+          window.location.href = `/api/exports/${job.id}/download`;
+        }
+        if (isFinished(job.status)) {
+          stopModalPolling();
+        }
+      } catch (error) {
+        stopModalPolling();
+        renderModalJob({ status: "FAILED", exportedRows: 0, totalRows: TOTAL_ROWS });
+        modalMessage.className = "message error";
+        modalMessage.textContent = error.message;
+      }
+    }
+
+    async function closeModalExport() {
+      if (modalJobIdValue) {
+        const activeStatus = modalStatus.textContent;
+        if (!isFinished(activeStatus)) {
+          await fetch(`/api/exports/${modalJobIdValue}/cancel`, { method: "POST" });
+        }
+      }
+      stopModalPolling();
+      bulkModalBackdrop.classList.remove("open");
+      bulkModalBackdrop.setAttribute("aria-hidden", "true");
+      modalJobIdValue = null;
+      modalDownloadTriggered = false;
+      await loadJobStatus();
+    }
+
+    function stopModalPolling() {
+      if (modalPollTimer) {
+        clearInterval(modalPollTimer);
+        modalPollTimer = null;
+      }
+    }
+
+    function renderModalJob(job) {
+      const status = job.status || "READY";
+      const exportedRows = Number(job.exportedRows || 0);
+      const totalRows = Number(job.totalRows || TOTAL_ROWS);
+      const percent = Number(job.progressPercent || 0);
+      modalStatus.textContent = status;
+      modalStatus.className = `badge ${status.toLowerCase()}`;
+      modalRows.textContent = `${exportedRows.toLocaleString()} / ${totalRows.toLocaleString()} (${percent}%)`;
+      modalProgress.max = totalRows;
+      modalProgress.value = exportedRows;
+      modalElapsed.textContent = formatMillis(job.elapsedMillis);
+      modalFileSize.textContent = formatBytes(job.fileSizeBytes);
+      modalJobId.textContent = job.id || "-";
+      modalStopBtn.disabled = isFinished(status);
+      modalDownloadBtn.disabled = status !== "COMPLETED";
+      if (status === "CANCELED") {
+        modalMessage.textContent = "Canceled. Partial file was removed.";
+      }
+      if (status === "FAILED" && job.errorMessage) {
+        modalMessage.className = "message error";
+        modalMessage.textContent = job.errorMessage;
+      }
+    }
+  </script>
+</body>
+</html>

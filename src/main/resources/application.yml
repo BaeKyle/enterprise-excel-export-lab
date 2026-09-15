@@ -1,0 +1,16 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:excel_export_lab;MODE=Oracle;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+
+mybatis:
+  mapper-locations: classpath:/mapper/**/*.xml
+
+export:
+  directory: build/export-files
+  chunk-size: 1000
+  sample-total-rows: 600000

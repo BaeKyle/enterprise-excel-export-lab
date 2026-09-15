@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.baekyle.excel.repository.SampleOrderMapper">
+
+  <resultMap id="OrderRowMap" type="com.baekyle.excel.domain.OrderRow">
+    <constructor>
+      <arg column="id" javaType="_long"/>
+      <arg column="customer_code" javaType="string"/>
+      <arg column="product_name" javaType="string"/>
+      <arg column="status" javaType="string"/>
+      <arg column="amount" javaType="java.math.BigDecimal"/>
+      <arg column="requested_date" javaType="java.time.LocalDate"/>
+    </constructor>
+  </resultMap>
+
+  <select id="findChunk" resultMap="OrderRowMap">
+    SELECT
+        X.ID AS id
+      , 'CUST-' || LPAD(MOD(X.ID, 1000), 5, '0') AS customer_code
+      , 'Sample Product ' || MOD(X.ID, 50) AS product_name
+      , CASE
+          WHEN MOD(X.ID, 11) = 0 THEN 'CANCELED'
+          WHEN MOD(X.ID, 3) = 0 THEN 'PENDING'
+          ELSE 'COMPLETED'
+        END AS status
+      , MOD(X.ID, 1000) * 1000 + 500 AS amount
+      , DATEADD('DAY', MOD(X.ID, 365), DATE '2026-01-01') AS requested_date
+    FROM SYSTEM_RANGE(1, #{totalRows}) AS X(ID)
+    ORDER BY X.ID
+    OFFSET #{offset} ROWS FETCH NEXT #{limit} ROWS ONLY
+  </select>
+
+  <!--
+    Normal download anti-pattern:
+    one unpaged query loads the entire result set before the browser can download.
+    The demo blocks this path with an insufficient-memory response.
+  -->
+  <select id="findAllForNormalDownload" resultMap="OrderRowMap">
+    SELECT
+        X.ID AS id
+      , 'CUST-' || LPAD(MOD(X.ID, 1000), 5, '0') AS customer_code
+      , 'Sample Product ' || MOD(X.ID, 50) AS product_name
+      , CASE
+          WHEN MOD(X.ID, 11) = 0 THEN 'CANCELED'
+          WHEN MOD(X.ID, 3) = 0 THEN 'PENDING'
+          ELSE 'COMPLETED'
+        END AS status
+      , MOD(X.ID, 1000) * 1000 + 500 AS amount
+      , DATEADD('DAY', MOD(X.ID, 365), DATE '2026-01-01') AS requested_date
+    FROM SYSTEM_RANGE(1, #{totalRows}) AS X(ID)
+    ORDER BY X.ID
+  </select>
+</mapper>
