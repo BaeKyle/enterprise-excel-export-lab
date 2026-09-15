@@ -1,0 +1,257 @@
+name: Performance Benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      chunk_size:
+        description: "Rows per query chunk"
+        required: true
+        default: "1000"
+      max_heap_mb:
+        description: "JVM max heap size (MB)"
+        required: true
+        default: "1024"
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: "17"
+          distribution: "temurin"
+          cache: "maven"
+
+      - name: Build executable application
+        run: mvn --batch-mode -DskipTests package spring-boot:repackage
+
+      - name: Run export benchmarks
+        shell: bash
+        env:
+          CHUNK_SIZE: ${{ inputs.chunk_size }}
+          MAX_HEAP_MB: ${{ inputs.max_heap_mb }}
+        run: |
+          set -euo pipefail
+
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y jq
+          fi
+
+          JAR_FILE="$(find target -maxdepth 1 -type f -name '*.jar' ! -name '*.original' | head -n 1)"
+          if [[ -z "${JAR_FILE}" ]]; then
+            echo "Executable jar was not found under target/."
+            exit 1
+          fi
+
+          RESULTS_CSV="benchmark-results.csv"
+          RESULTS_MD="benchmark-results.md"
+          APP_PID=""
+          MONITOR_PID=""
+
+          cleanup_processes() {
+            if [[ -n "${MONITOR_PID:-}" ]] && kill -0 "${MONITOR_PID}" 2>/dev/null; then
+              kill "${MONITOR_PID}" 2>/dev/null || true
+              wait "${MONITOR_PID}" 2>/dev/null || true
+            fi
+            MONITOR_PID=""
+
+            if [[ -n "${APP_PID:-}" ]] && kill -0 "${APP_PID}" 2>/dev/null; then
+              kill "${APP_PID}" 2>/dev/null || true
+              wait "${APP_PID}" 2>/dev/null || true
+            fi
+            APP_PID=""
+          }
+          trap cleanup_processes EXIT
+
+          CPU_COUNT="$(nproc)"
+          RAM_GB="$(awk '/MemTotal/ {printf "%.1f", $2 / 1024 / 1024}' /proc/meminfo)"
+          JAVA_VERSION="$(java -version 2>&1 | head -n 1 | sed 's/"/`/g')"
+
+          echo "rows,chunk_size,elapsed_ms,throughput_rows_per_sec,file_size_bytes,file_size_mb,peak_rss_kb,peak_rss_mb" > "${RESULTS_CSV}"
+
+          cat > "${RESULTS_MD}" <<EOF
+          ## Excel Export Performance Benchmark
+
+          End-to-end bulk export benchmark executed through the same REST API used by the demo UI.
+
+          **Environment**
+          - Runner: GitHub-hosted ubuntu-24.04
+          - CPU available to job: ${CPU_COUNT} vCPU
+          - Memory available to job: ${RAM_GB} GiB
+          - Java: ${JAVA_VERSION}
+          - JVM heap limit: -Xmx${MAX_HEAP_MB}m
+          - Query chunk size: ${CHUNK_SIZE} rows
+          - Data source: generated sample data with H2/MyBatis
+          - Excel writer: Apache POI SXSSF
+
+          | Rows | Chunk Size | Generation Time | Throughput | File Size | Peak Process RSS |
+          | ---: | ---: | ---: | ---: | ---: | ---: |
+          EOF
+
+          run_case() {
+            local rows="$1"
+            local output_dir="build/performance-${rows}"
+            local app_log="app-${rows}.log"
+            local peak_file="peak-rss-${rows}.txt"
+
+            echo ""
+            echo "=== Benchmark: ${rows} rows, chunk ${CHUNK_SIZE} ==="
+
+            rm -rf "${output_dir}"
+            echo "0" > "${peak_file}"
+
+            java -Xms256m -Xmx"${MAX_HEAP_MB}"m -jar "${JAR_FILE}" \
+              --server.port=8080 \
+              --export.sample-total-rows="${rows}" \
+              --export.chunk-size="${CHUNK_SIZE}" \
+              --export.directory="${output_dir}" \
+              > "${app_log}" 2>&1 &
+            APP_PID=$!
+
+            local ready="false"
+            for _ in $(seq 1 90); do
+              if curl -fsS "http://127.0.0.1:8080/" >/dev/null 2>&1; then
+                ready="true"
+                break
+              fi
+              if ! kill -0 "${APP_PID}" 2>/dev/null; then
+                echo "Application exited before becoming ready."
+                cat "${app_log}"
+                exit 1
+              fi
+              sleep 1
+            done
+
+            if [[ "${ready}" != "true" ]]; then
+              echo "Application did not become ready within 90 seconds."
+              cat "${app_log}"
+              exit 1
+            fi
+
+            (
+              peak=0
+              while kill -0 "${APP_PID}" 2>/dev/null; do
+                rss="$(ps -o rss= -p "${APP_PID}" 2>/dev/null | awk '{print $1}' || true)"
+                if [[ "${rss}" =~ ^[0-9]+$ ]] && (( rss > peak )); then
+                  peak="${rss}"
+                  echo "${peak}" > "${peak_file}"
+                fi
+                sleep 0.25
+              done
+            ) &
+            MONITOR_PID=$!
+
+            local start_json
+            start_json="$(curl -fsS -X POST "http://127.0.0.1:8080/api/exports/orders?chunkSize=${CHUNK_SIZE}")"
+            local job_id
+            job_id="$(jq -r '.id // empty' <<< "${start_json}")"
+
+            if [[ -z "${job_id}" ]]; then
+              echo "Export API did not return a job id."
+              echo "${start_json}"
+              exit 1
+            fi
+
+            local deadline=$(( $(date +%s) + 900 ))
+            local job_json="${start_json}"
+            local status="$(jq -r '.status // "UNKNOWN"' <<< "${job_json}")"
+
+            while [[ "${status}" != "COMPLETED" ]]; do
+              if [[ "${status}" == "FAILED" || "${status}" == "CANCELED" ]]; then
+                echo "Export ended with status ${status}."
+                echo "${job_json}"
+                cat "${app_log}"
+                exit 1
+              fi
+
+              if (( $(date +%s) > deadline )); then
+                echo "Export timed out after 15 minutes."
+                cat "${app_log}"
+                exit 1
+              fi
+
+              sleep 1
+              job_json="$(curl -fsS "http://127.0.0.1:8080/api/exports/${job_id}")"
+              status="$(jq -r '.status // "UNKNOWN"' <<< "${job_json}")"
+            done
+
+            if [[ -n "${MONITOR_PID:-}" ]] && kill -0 "${MONITOR_PID}" 2>/dev/null; then
+              kill "${MONITOR_PID}" 2>/dev/null || true
+              wait "${MONITOR_PID}" 2>/dev/null || true
+            fi
+            MONITOR_PID=""
+
+            local exported_rows
+            local elapsed_ms
+            local file_size_bytes
+            local file_name
+            exported_rows="$(jq -r '.exportedRows // 0' <<< "${job_json}")"
+            elapsed_ms="$(jq -r '.elapsedMillis // 0' <<< "${job_json}")"
+            file_size_bytes="$(jq -r '.fileSizeBytes // 0' <<< "${job_json}")"
+            file_name="$(jq -r '.fileName // empty' <<< "${job_json}")"
+
+            if [[ "${file_size_bytes}" == "0" && -n "${file_name}" && -f "${output_dir}/${file_name}" ]]; then
+              file_size_bytes="$(stat -c '%s' "${output_dir}/${file_name}")"
+            fi
+
+            if [[ "${elapsed_ms}" == "0" ]]; then
+              echo "Completed job did not provide elapsedMillis."
+              echo "${job_json}"
+              exit 1
+            fi
+
+            local throughput
+            local file_size_mb
+            local peak_rss_kb
+            local peak_rss_mb
+            local elapsed_sec
+
+            throughput="$(awk -v rows="${exported_rows}" -v ms="${elapsed_ms}" 'BEGIN {printf "%.0f", rows * 1000 / ms}')"
+            file_size_mb="$(awk -v bytes="${file_size_bytes}" 'BEGIN {printf "%.2f", bytes / 1024 / 1024}')"
+            peak_rss_kb="$(cat "${peak_file}")"
+            peak_rss_mb="$(awk -v kb="${peak_rss_kb}" 'BEGIN {printf "%.1f", kb / 1024}')"
+            elapsed_sec="$(awk -v ms="${elapsed_ms}" 'BEGIN {printf "%.2f", ms / 1000}')"
+
+            echo "${rows},${CHUNK_SIZE},${elapsed_ms},${throughput},${file_size_bytes},${file_size_mb},${peak_rss_kb},${peak_rss_mb}" >> "${RESULTS_CSV}"
+            echo "| ${rows} | ${CHUNK_SIZE} | ${elapsed_sec} s | ${throughput} rows/s | ${file_size_mb} MB | ${peak_rss_mb} MB |" >> "${RESULTS_MD}"
+
+            echo "Completed: ${rows} rows in ${elapsed_sec}s (${throughput} rows/s), ${file_size_mb} MB, peak RSS ${peak_rss_mb} MB"
+
+            curl -fsS -X POST "http://127.0.0.1:8080/api/exports/cleanup" >/dev/null || true
+            cleanup_processes
+            sleep 2
+          }
+
+          run_case 100000
+          run_case 300000
+          run_case 600000
+
+          cat >> "${RESULTS_MD}" <<'EOF'
+
+          > These values are reference measurements from a GitHub-hosted runner, not an SLA. Runtime can vary between runner instances. Peak Process RSS measures the Java process resident memory observed during the export, not JVM heap usage alone.
+          EOF
+
+          cat "${RESULTS_MD}"
+          cat "${RESULTS_MD}" >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload benchmark report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: excel-export-performance-report
+          path: |
+            benchmark-results.md
+            benchmark-results.csv
+            app-*.log
+          if-no-files-found: warn
+          retention-days: 14
