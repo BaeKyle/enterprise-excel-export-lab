@@ -1,0 +1,6 @@
+target/
+build/export-files/
+*.log
+*.xlsx
+.idea/
+.vscode/
