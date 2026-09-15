@@ -10,6 +10,14 @@ This project is a safe portfolio example. It uses generated sample data only and
 does not contain company source code, internal URLs, real table names, customer
 data, credentials, or business-specific documents.
 
+## Demo
+
+### Bulk Export in Progress
+<img width="877" height="888" alt="2  Bulk Export in Progress" src="https://github.com/user-attachments/assets/11185f53-a131-41fb-b24c-9f7c2cb7c03f" />
+
+### Export Completed
+<img width="876" height="905" alt="3  Export Completed" src="https://github.com/user-attachments/assets/ebbf53ea-9e0f-4a67-b73c-8e0ad9c078d9" />
+
 ## What This Demonstrates
 
 This project focuses on a common enterprise reporting problem:
