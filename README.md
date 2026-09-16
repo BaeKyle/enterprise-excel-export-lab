@@ -56,19 +56,22 @@ This sample compares two approaches:
 | Flow | Use case | Trade-off |
 | --- | --- | --- |
 | Normal download | One unpaged query and one response | Fails with an insufficient-memory style response before a stable browser download starts |
-| Bulk download | Large files such as 20MB+ Excel reports | Modal popup/status flow keeps the main browser screen responsive |
+| Bulk download | Large files such as 20MB+ Excel reports | Modal popup and status polling keep the main browser screen responsive |
 
 Bulk export flow:
 
 ```text
 User clicks export
-  -> main screen or popup creates/reuses a running export job
-  -> background worker reads rows in chunks, e.g. 1,000 rows per OFFSET/LIMIT query
-  -> SXSSFWorkbook streams rows to a temporary xlsx file
+  -> main screen or popup creates or reuses a running export job
+  -> background worker reads rows in chunks, e.g. 1,000 rows per OFFSET/FETCH query
+  -> SXSSFWorkbook streams rows to a temporary XLSX file
   -> UI polls job status and progress
   -> modal popup automatically starts the download after completion
   -> cleanup removes generated files
 ```
+
+For the rationale, limitations, and production trade-offs behind these choices, see
+[Architecture Decisions](docs/architecture-decisions.md).
 
 ## Features
 
