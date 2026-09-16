@@ -103,6 +103,39 @@ User clicks export
 - Adds a cleanup path for generated files, which is often missed in export features
 - Uses generated sample data only, making the repository safe to publish
 
+## Performance Benchmark
+
+[![Performance Benchmark](https://github.com/BaeKyle/enterprise-excel-export-lab/actions/workflows/performance.yml/badge.svg)](https://github.com/BaeKyle/enterprise-excel-export-lab/actions/workflows/performance.yml)
+
+End-to-end bulk export benchmark executed through the same REST API used by the demo UI.
+
+### Benchmark Environment
+
+* Runner: GitHub-hosted `ubuntu-24.04`
+* CPU available to job: 4 vCPU
+* Memory available to job: 15.6 GiB
+* Java: OpenJDK 17
+* JVM heap limit: `-Xmx1024m`
+* Query chunk size: 1,000 rows
+* Data source: generated sample data with H2/MyBatis
+* Excel writer: Apache POI SXSSF
+
+### Benchmark Results
+
+|    Rows | Chunk Size | Generation Time |   Throughput | File Size | Peak Process RSS |
+| ------: | ---------: | --------------: | -----------: | --------: | ---------------: |
+| 100,000 |      1,000 |         12.46 s | 8,023 rows/s |   3.26 MB |         976.9 MB |
+| 300,000 |      1,000 |         83.54 s | 3,591 rows/s |   9.48 MB |       1,122.9 MB |
+| 600,000 |      1,000 |        318.32 s | 1,885 rows/s |  18.82 MB |       1,184.5 MB |
+
+The benchmark verifies the export flow with datasets up to **600,000 rows** in a reproducible GitHub Actions environment.
+
+The export processes database records in fixed-size chunks and writes workbook data using Apache POI SXSSF instead of loading the entire result set and workbook into memory at once.
+
+[View GitHub Actions benchmark run](https://github.com/BaeKyle/enterprise-excel-export-lab/actions/runs/34924825389)
+
+> These values are reference measurements from a GitHub-hosted runner, not an SLA. Runtime can vary between runner instances. Peak Process RSS measures the Java process resident memory observed during the export, not JVM heap usage alone.
+
 ## Demo Flow
 
 Open the browser demo:
@@ -273,3 +306,5 @@ In a real production system, this pattern can be extended with:
 - export history
 - object storage instead of local disk
 - SSE or WebSocket progress updates instead of polling
+
+
